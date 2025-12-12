@@ -1,55 +1,55 @@
-#include <ESP8266WiFi.h>         // WiFi functionality for ESP8266
-#include <ESP8266WebServer.h>    // Web server library for handling HTTP requests
+#include <ESP8266WiFi.h>        
+#include <ESP8266WebServer.h> 
 
-#define LED_PIN D6               // Define the GPIO pin used for LED transmission
-#define BIT_DURATION 130         // Duration of each bit in milliseconds
+#define LED_PIN D6             
+#define BIT_DURATION 130        
 
-const char* ssid = "LiFi_AP";     // Access Point SSID
-const char* password = "12345678"; // Access Point password
+const char* ssid = "LiFi_AP";     
+const char* password = "12345678";
 
-ESP8266WebServer server(80);     // Create a web server object on port 80
-String serialBuffer;             // Buffer to store serial input before sending
+ESP8266WebServer server(80);   
+String serialBuffer;             
 
 void setup() {
-  pinMode(LED_PIN, OUTPUT);       // Set the LED pin as output
-  digitalWrite(LED_PIN, HIGH);    // Keep LED ON initially (idle high)
+  pinMode(LED_PIN, OUTPUT);      
+  digitalWrite(LED_PIN, HIGH);   
 
-  Serial.begin(115200);           // Start serial communication
+  Serial.begin(115200);         
   Serial.println("Li‑Fi Transmitter Ready");
   Serial.println("Type a message below and press ENTER to send via Serial:");
 
-  // Create a Wi-Fi Access Point
+  
   WiFi.softAP(ssid, password);
 
-  // Define the HTTP handlers for the root page and sending message
+
   server.on("/", handleRoot);
   server.on("/send", handleSend);
   
-  server.begin();                // Start the web server
+  server.begin();               
 }
 
 void loop() {
-  server.handleClient();         // Continuously listen and respond to web clients
+  server.handleClient();         
 
-  // Handle input from Serial Monitor
+ 
   if (Serial.available()) {
-    char incoming = Serial.read();  // Read one character from serial input
+    char incoming = Serial.read();  
 
-    if (incoming == '\n') {         // If ENTER is pressed (end of message)
-      serialBuffer.trim();          // Remove any leading/trailing whitespace
+    if (incoming == '\n') {         
+      serialBuffer.trim();         
       if (serialBuffer.length() > 0) {
         Serial.print("🖥️ Transmitting (Serial): ");
         Serial.println(serialBuffer);
-        sendMessage(serialBuffer);  // Transmit the message using LED
+        sendMessage(serialBuffer);  
       }
-      serialBuffer = "";            // Clear the buffer after sending
+      serialBuffer = "";          
     } else {
-      serialBuffer += incoming;     // Append character to buffer
+      serialBuffer += incoming;     
     }
   }
 }
 
-// Handler to serve the HTML form for message input
+
 void handleRoot() {
   server.send(200, "text/html", R"rawliteral(
 <!DOCTYPE html>
@@ -129,49 +129,49 @@ void handleRoot() {
 )rawliteral");
 }
 
-// Handler to process the message sent from the web interface
+
 void handleSend() {
   if (server.hasArg("msg")) {
-    String input = server.arg("msg"); // Get the message from the "msg" input field
-    input.trim();                     // Remove whitespace
-    input.replace("<", "");           // Sanitize HTML
+    String input = server.arg("msg"); 
+    input.trim();                     
+    input.replace("<", "");          
     input.replace(">", "");
     Serial.print(" Transmitting (Web): ");
     Serial.println(input);
-    sendMessage(input);               // Transmit message using LED
+    sendMessage(input);               
     server.send(200, "text/html", "<h2> Message Sent!</h2><a href='/'> Back</a>");
   } else {
     server.send(400, "text/html", "<h2> Message Missing</h2><a href='/'> Back</a>");
   }
 }
 
-// Transmit the full message string, character by character
+
 void sendMessage(const String& message) {
   for (unsigned int i = 0; i < message.length(); i++) {
-    sendByte(message[i]); // Send one character at a time
+    sendByte(message[i]); 
   }
 }
 
-// Convert a character to bits and send each bit using LED
+
 void sendByte(char c) {
   Serial.print("Sending '");
   Serial.print(c);
   Serial.print("' → ");
 
-  sendBit(0);  // Send start bit (always 0)
+  sendBit(0);  
 
   for (int i = 0; i < 8; i++) {
-    bool bit = bitRead(c, i); // Read each bit (LSB first)
+    bool bit = bitRead(c, i); 
     Serial.print(bit);
-    sendBit(bit);             // Send each bit as light pulse
+    sendBit(bit);             
   }
 
-  sendBit(1);  // Send stop bit (always 1)
+  sendBit(1); 
   Serial.println();
 }
 
-// Send a single bit as ON/OFF LED pulse
+
 void sendBit(bool bitVal) {
-  digitalWrite(LED_PIN, bitVal ? HIGH : LOW); // HIGH for 1, LOW for 0
-  delay(BIT_DURATION);                        // Wait for bit duration
+  digitalWrite(LED_PIN, bitVal ? HIGH : LOW); 
+  delay(BIT_DURATION);                       
 }
